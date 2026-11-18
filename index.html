@@ -1,0 +1,562 @@
+<title>Stack 2 Stack</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: one stage (the animated showdown) over two athlete cards, then the scoreboard. Colours are bumper-plate colours: red 25 kg for Josh, blue 20 kg for James, yellow 15 kg for highlights. */
+:root {
+  --bg: #e7eaee;
+  --surface: #f7f8fa;
+  --stage: #dde2e8;
+  --ink: #1a1e24;
+  --muted: #5a6470;
+  --line: #c9cfd7;
+  --josh: #c92a22;
+  --james: #1d5bbd;
+  --plate: #d9a20f;
+  --plate-ink: #3a2a00;
+  --font-display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14171b; --surface: #1d2127; --stage: #0f1215; --ink: #e8ebef; --muted: #9aa4af; --line: #323941;
+    --josh: #ff5b4f; --james: #5d97ff; --plate: #f0c03c; --plate-ink: #2a1f00; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14171b; --surface: #1d2127; --stage: #0f1215; --ink: #e8ebef; --muted: #9aa4af; --line: #323941;
+  --josh: #ff5b4f; --james: #5d97ff; --plate: #f0c03c; --plate-ink: #2a1f00; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 48px;
+}
+.wrap { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
+h1 { font-family: var(--font-display); font-weight: 900; font-size: clamp(44px, 8vw, 72px); line-height: .9; margin: 0; letter-spacing: .01em; text-transform: uppercase; }
+h1 .vs { color: var(--plate); }
+.sub { margin: 6px 0 0; color: var(--muted); max-width: 60ch; }
+.leader { font-family: var(--font-display); font-weight: 800; font-size: 22px; text-transform: uppercase; letter-spacing: .04em;
+  padding: 6px 14px; border-radius: 999px; border: 2px solid currentColor; white-space: nowrap; }
+h2 { font-family: var(--font-display); font-weight: 800; font-size: 26px; text-transform: uppercase; letter-spacing: .03em; margin: 0; text-wrap: balance; }
+
+.stage { background: var(--stage); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+#show { display: block; width: 100%; height: clamp(300px, 46vw, 420px); }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 14px; border-top: 1px solid var(--line); background: var(--surface); }
+button { font: inherit; cursor: pointer; border-radius: 8px; padding: 9px 16px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-weight: 600; }
+button.go { background: var(--plate); color: var(--plate-ink); border-color: transparent; font-family: var(--font-display); font-weight: 800; font-size: 19px; letter-spacing: .05em; text-transform: uppercase; padding: 6px 20px; }
+button:hover { filter: brightness(1.05); }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--plate); outline-offset: 2px; }
+select { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+.status { margin-left: auto; color: var(--muted); font-size: 13px; }
+
+.athletes { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; border-top: 6px solid var(--c); }
+.card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.card h3 { font-family: var(--font-display); font-weight: 900; font-size: 36px; text-transform: uppercase; margin: 0; line-height: 1; color: var(--c); }
+.bw { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.lift-row { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; padding-block: 8px; border-top: 1px solid var(--line); }
+.lift-name { font-weight: 600; }
+.lift-load { grid-column: 1; color: var(--muted); font-size: 13px; }
+.mult { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-left: 6px; }
+.reps { grid-column: 2; grid-row: 1 / span 2; display: flex; align-items: center; gap: 6px; }
+input[type=number] { font-family: var(--font-mono); font-weight: 600; font-size: 18px; width: 4.6em; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+.bw input { font-size: 15px; width: 4.2em; padding: 4px 6px; }
+.unit { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+
+.board { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; min-width: 420px; }
+th, td { text-align: right; padding: 9px 10px; border-bottom: 1px solid var(--line); }
+th:first-child, td:first-child { text-align: left; }
+thead th { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }
+td.num { font-family: var(--font-mono); font-weight: 600; font-size: 16px; }
+td.win { color: var(--c); }
+td.win::after { content: " ●"; font-size: 10px; vertical-align: middle; }
+tfoot td { border-bottom: none; font-weight: 600; }
+tfoot tr.total td { font-family: var(--font-display); font-weight: 900; font-size: 28px; border-top: 2px solid var(--ink); }
+tfoot tr.tonnage td { color: var(--muted); font-size: 13px; font-family: var(--font-body); font-weight: 500; }
+.fine { color: var(--muted); font-size: 13px; margin: 0; max-width: 70ch; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Josh <span class="vs">v</span> James</h1>
+      <p class="sub">Stack 2 Stack: each of you lifts the other's bodyweight times the lift's multiplier, for max reps. Most total reps wins.</p>
+    </div>
+    <div class="leader" id="leader">Loading</div>
+  </header>
+
+  <section class="stage" aria-label="Showdown animation">
+    <canvas id="show" aria-label="Animated stick figures lifting each other"></canvas>
+    <div class="controls">
+      <button class="go" id="play">Play showdown</button>
+      <select id="pick" aria-label="Replay one lift">
+        <option value="all">All five lifts</option>
+      </select>
+      <button id="skip">Skip to result</button>
+      <span class="status" id="status">Connecting to the shared scoreboard…</span>
+    </div>
+  </section>
+
+  <section class="athletes" id="athletes"></section>
+
+  <section class="board">
+    <h2>Scoreboard</h2>
+    <div class="table-scroll"><table id="table"></table></div>
+    <p class="fine">Load is the opponent's bodyweight times the multiplier. For the weighted pull-up the target is the opponent's full bodyweight: the lighter lifter adds a belt, the heavier one uses an assist. Entries save as soon as you leave a field and show up live for both of you. Tonnage (reps × load) is shown for bragging rights only.</p>
+  </section>
+</div>
+
+<script>
+const LIFTS = [
+  { id: "deadlift", name: "Deadlift", mult: 1.25 },
+  { id: "squat", name: "Squat", mult: 1 },
+  { id: "bench", name: "Bench", mult: 0.75 },
+  { id: "ohp", name: "Overhead Press", mult: 0.5 },
+  { id: "pullup", name: "Weighted Pull-up", mult: 1 },
+];
+const DEFAULTS = { josh: { name: "Josh", weight: 120 }, james: { name: "James", weight: 95 } };
+const IDS = ["josh", "james"];
+const state = {
+  josh: { name: "Josh", weight: 120, reps: {} },
+  james: { name: "James", weight: 95, reps: {} },
+};
+const other = id => id === "josh" ? "james" : "josh";
+const fmtKg = n => (Math.round(n * 10) / 10).toLocaleString(undefined, { maximumFractionDigits: 1 }) + " kg";
+const reps = (id, lift) => { const v = Number(state[id].reps[lift]); return Number.isFinite(v) && v > 0 ? Math.floor(v) : 0; };
+const load = (id, lift) => state[other(id)].weight * LIFTS.find(l => l.id === lift).mult;
+const total = id => LIFTS.reduce((s, l) => s + reps(id, l.id), 0);
+const tonnage = id => LIFTS.reduce((s, l) => s + reps(id, l.id) * load(id, l.id), 0);
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+/* ---------- Cards and scoreboard ---------- */
+const athletesEl = document.getElementById("athletes");
+function buildCards() {
+  athletesEl.innerHTML = "";
+  for (const id of IDS) {
+    const card = document.createElement("article");
+    card.className = "card";
+    card.style.setProperty("--c", `var(--${id})`);
+    card.innerHTML = `
+      <div class="card-head">
+        <h3>${state[id].name}</h3>
+        <label class="bw" for="bw-${id}">Bodyweight <input type="number" id="bw-${id}" min="30" max="250" step="0.1" inputmode="decimal"> kg</label>
+      </div>
+      ${LIFTS.map(l => `
+        <div class="lift-row">
+          <label class="lift-name" for="r-${id}-${l.id}">${l.name}<span class="mult">×${l.mult}</span></label>
+          <div class="lift-load" id="load-${id}-${l.id}"></div>
+          <div class="reps"><input type="number" id="r-${id}-${l.id}" min="0" max="999" step="1" inputmode="numeric" placeholder="0"><span class="unit">reps</span></div>
+        </div>`).join("")}`;
+    athletesEl.appendChild(card);
+    card.querySelector(`#bw-${id}`).addEventListener("change", e => {
+      const v = parseFloat(e.target.value);
+      if (Number.isFinite(v) && v > 0) { state[id].weight = v; save(id); renderAll(); }
+    });
+    for (const l of LIFTS) {
+      card.querySelector(`#r-${id}-${l.id}`).addEventListener("change", e => {
+        const v = parseInt(e.target.value, 10);
+        state[id].reps[l.id] = Number.isFinite(v) && v >= 0 ? v : 0;
+        save(id); renderAll();
+      });
+    }
+  }
+}
+function fillInputs() {
+  for (const id of IDS) {
+    const bw = document.getElementById(`bw-${id}`);
+    if (document.activeElement !== bw) bw.value = state[id].weight;
+    for (const l of LIFTS) {
+      const inp = document.getElementById(`r-${id}-${l.id}`);
+      if (document.activeElement !== inp) inp.value = state[id].reps[l.id] ?? "";
+      const o = state[other(id)];
+      let txt = `Lifting ${o.name}: ${fmtKg(load(id, l.id))}`;
+      if (l.id === "pullup") {
+        const diff = o.weight - state[id].weight;
+        txt += diff > 0 ? ` · add ${fmtKg(diff)} belt` : diff < 0 ? ` · ${fmtKg(-diff)} assist` : " · bodyweight";
+      }
+      document.getElementById(`load-${id}-${l.id}`).textContent = txt;
+    }
+  }
+}
+function renderTable() {
+  const [a, b] = IDS;
+  const rows = LIFTS.map(l => {
+    const ra = reps(a, l.id), rb = reps(b, l.id);
+    return `<tr><td>${l.name} <span class="mult">×${l.mult}</span></td>
+      <td class="num ${ra > rb ? "win" : ""}" style="--c:var(--${a})">${ra}</td>
+      <td class="num ${rb > ra ? "win" : ""}" style="--c:var(--${b})">${rb}</td></tr>`;
+  }).join("");
+  const ta = total(a), tb = total(b);
+  document.getElementById("table").innerHTML = `
+    <thead><tr><th>Lift</th><th style="color:var(--${a})">${state[a].name}</th><th style="color:var(--${b})">${state[b].name}</th></tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot>
+      <tr class="total"><td>Total reps</td><td style="color:var(--${a})">${ta}</td><td style="color:var(--${b})">${tb}</td></tr>
+      <tr class="tonnage"><td>Tonnage moved</td><td>${fmtKg(tonnage(a))}</td><td>${fmtKg(tonnage(b))}</td></tr>
+    </tfoot>`;
+  const lead = document.getElementById("leader");
+  if (ta === tb) { lead.textContent = ta === 0 ? "No reps yet" : `Level at ${ta}`; lead.style.color = "var(--muted)"; }
+  else { const w = ta > tb ? a : b; lead.textContent = `${state[w].name} leads by ${Math.abs(ta - tb)}`; lead.style.color = `var(--${w})`; }
+}
+function renderAll() { fillInputs(); renderTable(); if (!show.running) drawIdle(); }
+
+/* ---------- Shared storage ---------- */
+let db = null;
+const statusEl = document.getElementById("status");
+const writing = {}, pending = {};
+async function save(id) {
+  if (!db) { statusEl.textContent = "Not connected: changes stay on this screen only."; return; }
+  if (writing[id]) { pending[id] = true; return; }
+  writing[id] = true;
+  try {
+    do {
+      pending[id] = false;
+      const p = state[id];
+      await db.doc(`players/${id}`).set({ name: p.name, weight: p.weight, reps: { ...p.reps }, updatedAt: Date.now() });
+    } while (pending[id]);
+    statusEl.textContent = "Saved. Both of you see this live.";
+  } catch (e) {
+    statusEl.textContent = e && e.code === "invalid_argument"
+      ? "You can view but not edit. Ask the owner for Contributor access."
+      : "Couldn't save just now. Try again in a moment.";
+  } finally { writing[id] = false; }
+}
+(async () => {
+  await Promise.resolve();
+  const timer = setTimeout(() => { statusEl.textContent = "Still connecting… showing defaults for now."; }, 10000);
+  try { db = window.claude && window.claude.use ? await window.claude.use("db") : null; } catch { db = null; }
+  if (!db) { clearTimeout(timer); statusEl.textContent = "Not connected: open this on claude.ai to share scores."; renderAll(); return; }
+  const seen = new Set();
+  for (const id of IDS) {
+    db.doc(`players/${id}`).onSnapshot(snap => {
+      if (!snap.metadata.fromCache) { seen.add(id); if (seen.size === IDS.length) { clearTimeout(timer); statusEl.textContent = "Live. Edits save when you leave a field."; } }
+      if (snap.exists) {
+        const d = snap.data();
+        state[id] = {
+          name: typeof d.name === "string" && d.name ? d.name.slice(0, 24) : DEFAULTS[id].name,
+          weight: Number(d.weight) > 0 ? Number(d.weight) : DEFAULTS[id].weight,
+          reps: d.reps && typeof d.reps === "object" ? { ...d.reps } : {},
+        };
+      }
+      renderAll();
+    }, () => { clearTimeout(timer); statusEl.textContent = "Lost the connection to the shared scoreboard."; });
+  }
+})();
+
+/* ---------- Stick-figure showdown ---------- */
+const P = (x, y) => [x, y];
+const STAND = { head: P(0, 95), neck: P(0, 85), elbow: P(-6, 68), hand: P(-4, 50), hip: P(0, 50), knee: P(2, 26), foot: P(0, 0) };
+// a = start of the rep, b = the far end. pfail = how far a failed rep gets. Units: figure is ~100 tall, y up, x forward.
+const POSES = {
+  squat: {
+    a: { head: P(0, 95), neck: P(0, 85), elbow: P(-10, 80), hand: P(-3, 88), hip: P(0, 50), knee: P(3, 26), foot: P(0, 0) },
+    b: { head: P(17, 61), neck: P(12, 53), elbow: P(3, 48), hand: P(9, 56), hip: P(-10, 26), knee: P(14, 24), foot: P(0, 0) },
+    anchor: pts => [pts.neck[0] - 2, pts.neck[1] + 5], ride: "horiz", pfail: 0.92, failFrom: 1,
+  },
+  deadlift: {
+    a: { head: P(22, 67), neck: P(15, 60), elbow: P(15, 42), hand: P(15, 24), hip: P(-14, 40), knee: P(8, 26), foot: P(0, 0) },
+    b: { head: P(0, 95), neck: P(0, 85), elbow: P(1, 67), hand: P(3, 49), hip: P(0, 50), knee: P(1, 26), foot: P(0, 0) },
+    anchor: pts => [pts.hand[0] + 8, pts.hand[1] - 2], ride: "horiz", pfail: 0.28,
+  },
+  bench: {
+    a: { head: P(31, 31), neck: P(22, 28), elbow: P(22, 46), hand: P(22, 64), hip: P(-14, 28), knee: P(-34, 33), foot: P(-38, 0) },
+    b: { head: P(31, 31), neck: P(22, 28), elbow: P(8, 40), hand: P(22, 42), hip: P(-14, 28), knee: P(-34, 33), foot: P(-38, 0) },
+    anchor: pts => [pts.hand[0], pts.hand[1] + 5], ride: "horiz", pfail: 0.9, failFrom: 1, prop: "bench",
+  },
+  ohp: {
+    a: { head: P(0, 95), neck: P(0, 85), elbow: P(10, 72), hand: P(6, 90), hip: P(0, 50), knee: P(2, 26), foot: P(0, 0) },
+    b: { head: P(0, 95), neck: P(0, 85), elbow: P(2, 102), hand: P(2, 120), hip: P(0, 50), knee: P(2, 26), foot: P(0, 0) },
+    anchor: pts => [pts.hand[0], pts.hand[1] + 4], ride: "horiz", pfail: 0.3,
+  },
+  pullup: {
+    a: { head: P(0, 157), neck: P(0, 147), elbow: P(0, 161), hand: P(0, 175), hip: P(0, 112), knee: P(2, 88), foot: P(0, 62) },
+    b: { head: P(0, 185), neck: P(0, 175), elbow: P(10, 161), hand: P(0, 175), hip: P(0, 140), knee: P(3, 116), foot: P(0, 90) },
+    anchor: pts => [pts.foot[0], pts.foot[1]], ride: "hang", pfail: 0.35, prop: "bar",
+  },
+};
+const lerp = (a, b, t) => a + (b - a) * t;
+const lerpPose = (a, b, t) => { const o = {}; for (const k in a) o[k] = [lerp(a[k][0], b[k][0], t), lerp(a[k][1], b[k][1], t)]; return o; };
+const easeOut = t => 1 - (1 - t) ** 3, easeIn = t => t * t;
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const TAUNTS = ["Light weight!", "Is that all?", "Warm-up set", "Too easy", "Next!", "Ain't nothin' but a peanut"];
+const PLEAS = ["Help!", "Spot me!", "Oof", "Why are you so heavy", "Nope", "Tell my mum…"];
+
+const canvas = document.getElementById("show");
+const ctx = canvas.getContext("2d");
+let W = 0, H = 0, DPR = 1;
+function resize() {
+  const r = canvas.getBoundingClientRect();
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = r.width; H = r.height;
+  canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
+  if (!show.running) drawIdle();
+}
+new ResizeObserver(resize).observe(canvas);
+
+function frame() {
+  const k = Math.min((W / 2) / 120, (H - 104) / 196);
+  return { k, ground: H - 62 };
+}
+function toScreen(side, x, y) {
+  const { k, ground } = frame();
+  const ox = W * (side ? 0.75 : 0.25), dir = side ? -1 : 1;
+  return [ox + dir * x * k, ground - y * k];
+}
+
+function colors() {
+  return { ink: cssVar("--ink"), muted: cssVar("--muted"), line: cssVar("--line"), stage: cssVar("--stage"), surface: cssVar("--surface"),
+    josh: cssVar("--josh"), james: cssVar("--james"), plate: cssVar("--plate"), plateInk: cssVar("--plate-ink") };
+}
+
+function seg(side, a, b, col, w, alpha = 1) {
+  const A = toScreen(side, ...a), B = toScreen(side, ...b);
+  ctx.globalAlpha = alpha; ctx.strokeStyle = col; ctx.lineWidth = w;
+  ctx.beginPath(); ctx.moveTo(...A); ctx.lineTo(...B); ctx.stroke(); ctx.globalAlpha = 1;
+}
+function headAt(side, p, r, col, C, { dead = false, strain = 0, flip = false } = {}) {
+  const { k } = frame();
+  const [x, y] = toScreen(side, ...p);
+  ctx.fillStyle = C.surface; ctx.strokeStyle = col; ctx.lineWidth = Math.max(2, 3.2 * k * (r / 9));
+  ctx.beginPath(); ctx.arc(x, y, r * k, 0, Math.PI * 2); ctx.fill();
+  if (strain > 0) { ctx.globalAlpha = 0.55 * strain; ctx.fillStyle = "#e0453a"; ctx.fill(); ctx.globalAlpha = 1; }
+  ctx.stroke();
+  const dir = side ? -1 : 1, e = r * k;
+  ctx.strokeStyle = C.ink; ctx.fillStyle = C.ink; ctx.lineWidth = Math.max(1.2, e * 0.16);
+  const ex = x + dir * e * 0.38, ey = y + (flip ? 0.15 : -0.15) * e;
+  if (dead) {
+    for (const dx of [-0.32, 0.32]) {
+      const cx = ex + dx * e, s = e * 0.16;
+      ctx.beginPath(); ctx.moveTo(cx - s, ey - s); ctx.lineTo(cx + s, ey + s); ctx.moveTo(cx + s, ey - s); ctx.lineTo(cx - s, ey + s); ctx.stroke();
+    }
+  } else {
+    ctx.beginPath(); ctx.arc(ex, ey, Math.max(1.4, e * 0.13), 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+function drawLifter(side, pts, col, C, opts) {
+  const { k } = frame(), w = Math.max(2.5, 4 * k);
+  const back = (p) => [p[0] - 3, p[1]];
+  seg(side, back(pts.hip), back(pts.knee), col, w, 0.4); seg(side, back(pts.knee), back(pts.foot), col, w, 0.4);
+  seg(side, back(pts.neck), back(pts.elbow), col, w, 0.4); seg(side, back(pts.elbow), back(pts.hand), col, w, 0.4);
+  seg(side, pts.neck, pts.hip, col, w * 1.15);
+  seg(side, pts.hip, pts.knee, col, w); seg(side, pts.knee, pts.foot, col, w);
+  seg(side, pts.neck, pts.elbow, col, w); seg(side, pts.elbow, pts.hand, col, w);
+  headAt(side, pts.head, 9, col, C, opts);
+}
+
+// Passenger: the opponent, scaled by the lift's multiplier, flailing.
+function drawPassenger(side, anchor, s, mode, col, C, t, dead) {
+  const { k } = frame(), w = Math.max(2, 3.4 * k * Math.sqrt(s));
+  const kick = dead ? 0 : Math.sin(t * 11), kick2 = dead ? 0 : Math.sin(t * 11 + 1.7);
+  const at = (x, y) => [anchor[0] + x * s, anchor[1] + y * s];
+  if (mode === "hang") {
+    const hand = at(0, 0), elbow = at(3, -9), neck = at(0, -18), head = at(0, -10), hip = at(0, -42);
+    const knee = at(4 * kick, -56), foot = at(7 * kick2, -70);
+    seg(side, hand, elbow, col, w); seg(side, elbow, neck, col, w);
+    seg(side, neck, hip, col, w * 1.1); seg(side, hip, knee, col, w); seg(side, knee, foot, col, w);
+    headAt(side, head, 7 * s, col, C, { dead });
+    return;
+  }
+  // horizontal: head forward (+x), legs kicking at the back
+  const head = at(26, 2), neck = at(17, 0), hip = at(-10, 0);
+  const knee = at(-20, 2 + 6 * kick), foot = at(-30, 4 + 9 * kick2);
+  const elbow = at(12, -7 + 5 * kick2), hand = at(5, -12 + 7 * kick);
+  const elbow2 = at(20, 8 + 4 * kick), hand2 = at(28, 13 + 6 * kick2);
+  seg(side, neck, hip, col, w * 1.1); seg(side, hip, knee, col, w); seg(side, knee, foot, col, w);
+  seg(side, neck, elbow, col, w, 0.5); seg(side, elbow, hand, col, w, 0.5);
+  seg(side, neck, elbow2, col, w); seg(side, elbow2, hand2, col, w);
+  headAt(side, head, 7 * s, col, C, { dead });
+}
+
+function drawProp(side, prop, C, c) {
+  const { k } = frame(), w = Math.max(2, 3 * k);
+  if (prop === "bench") {
+    seg(side, [-46, 22], [28, 22], C.muted, Math.max(4, 7 * k));
+    seg(side, [-38, 22], [-38, 0], C.muted, w); seg(side, [20, 22], [20, 0], C.muted, w);
+  }
+  if (prop === "bar") {
+    seg(side, [-38, 175], [38, 175], C.muted, w);
+    seg(side, [-38, 175], [-38, 0], C.muted, w * 0.8); seg(side, [38, 175], [38, 0], C.muted, w * 0.8);
+  }
+}
+
+function bubble(side, anchorPt, text, C, col) {
+  const [x, y] = toScreen(side, ...anchorPt);
+  ctx.font = `600 ${clamp(W / 46, 11, 15)}px ${cssVar("--font-body")}`;
+  const tw = ctx.measureText(text).width, pad = 8, bh = 26;
+  let bx = clamp(x - tw / 2 - pad, 6, W - tw - pad * 2 - 6), by = Math.max(6, y - bh - 14);
+  ctx.fillStyle = C.surface; ctx.strokeStyle = col; ctx.lineWidth = 2;
+  ctx.beginPath(); roundRect(bx, by, tw + pad * 2, bh, 8); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x - 5, by + bh - 1); ctx.lineTo(x, by + bh + 8); ctx.lineTo(x + 5, by + bh - 1); ctx.fill();
+  ctx.fillStyle = C.ink; ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.fillText(text, bx + pad, by + bh / 2 + 1);
+}
+function roundRect(x, y, w, h, r) {
+  ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+
+function clearStage(C) {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = C.stage; ctx.fillRect(0, 0, W, H);
+  const { ground } = frame();
+  ctx.fillStyle = C.line; ctx.fillRect(0, ground, W, 2);
+  ctx.globalAlpha = 0.35; ctx.fillRect(W / 2 - 1, 0, 2, ground); ctx.globalAlpha = 1;
+}
+function text(str, x, y, { size = 14, weight = 600, color, align = "center", font = "--font-body", base = "alphabetic" } = {}) {
+  ctx.font = `${weight} ${size}px ${cssVar(font)}`; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = base; ctx.fillText(str, x, y);
+}
+
+function drawIdle(t = 0) {
+  if (!W) return;
+  const C = colors(); clearStage(C);
+  const { ground } = frame();
+  IDS.forEach((id, side) => {
+    const bob = Math.sin(t * 2 + side) * 0.6;
+    const pts = lerpPose(STAND, STAND, 0); for (const k in pts) pts[k] = [pts[k][0], pts[k][1] + (k === "foot" ? 0 : bob)];
+    drawLifter(side, pts, C[id], C, {});
+    const [x] = toScreen(side, 0, 0);
+    text(state[id].name.toUpperCase(), x, ground + 30, { size: 26, weight: 900, color: C[id], font: "--font-display" });
+    text(`${fmtKg(state[id].weight)} · ${total(id)} reps total`, x, ground + 50, { size: 13, weight: 500, color: C.muted });
+  });
+  text("Press play to settle it", W / 2, 34, { size: clamp(W / 26, 18, 30), weight: 800, color: C.ink, font: "--font-display" });
+}
+
+/* Show timeline */
+const show = { running: false, raf: 0, segs: [], start: 0, onlyOne: false };
+function buildSegs(only) {
+  const list = only && only !== "all" ? LIFTS.filter(l => l.id === only) : LIFTS;
+  return list.map((lift, i) => {
+    const n = IDS.map(id => reps(id, lift.id));
+    const max = Math.max(...n, 1);
+    const d = clamp(3.8 / max, 0.2, 0.85);
+    const intro = 1.2;
+    return { lift, n, d, intro, dur: intro + Math.max(...n) * d + 2.8, seed: i + n[0] * 7 + n[1] * 3 };
+  });
+}
+function lifterState(sg, side, t) {
+  const n = sg.n[side], o = sg.n[1 - side], d = sg.d, pose = POSES[sg.lift.id];
+  if (t < 0) return { p: 0, c: 0, done: 0 };
+  if (t < n * d) { const loc = (t % d) / d; return { p: (1 - Math.cos(2 * Math.PI * loc)) / 2, c: 0, done: Math.floor(t / d) }; }
+  const tf = t - n * d;
+  if (n > o) return { p: 0, c: 0, done: n, taunt: tf > 0.15 };
+  if (tf < 1.0) {
+    const p = pose.pfail * easeOut(Math.min(tf / 0.45, 1));
+    return { p, c: 0, done: n, shake: tf > 0.3, strain: Math.min(tf / 0.8, 1), plea: tf > 0.35 };
+  }
+  const c = Math.min((tf - 1.0) / 0.35, 1);
+  return { p: pose.pfail * (1 - c), c: easeIn(c), done: n, dead: c >= 1, plea: c < 1, strain: 1 - c };
+}
+function squash(pts, c) {
+  const o = {};
+  for (const k in pts) o[k] = [pts[k][0] * (1 + 0.45 * c), pts[k][1] * (1 - 0.88 * c) + (k === "foot" ? 0 : 2 * c)];
+  return o;
+}
+function drawLiftSeg(sg, t, totalsBefore) {
+  const C = colors(); clearStage(C);
+  const { ground } = frame();
+  const lt = t - sg.intro;
+  const pose = POSES[sg.lift.id];
+  IDS.forEach((id, side) => {
+    const st = lifterState(sg, side, lt);
+    let pts = lerpPose(pose.a, pose.b, st.p);
+    if (st.shake) for (const k in pts) if (k !== "foot") pts[k] = [pts[k][0] + Math.sin(t * 70) * 1.2, pts[k][1]];
+    if (st.c) pts = squash(pts, st.c);
+    drawProp(side, pose.prop, C, st.c);
+    const pid = other(id), s = sg.lift.mult;
+    let anchor = pose.anchor(pts), mode = pose.ride;
+    if (st.c) { const rest = [pts.hip[0] + 6, 14 + 4 * s]; anchor = [lerp(anchor[0], rest[0], st.c), lerp(anchor[1], rest[1], st.c)]; if (st.c > 0.5) mode = "horiz"; }
+    drawLifter(side, pts, C[id], C, { dead: st.dead, strain: st.strain || 0 });
+    drawPassenger(side, anchor, s, mode, C[pid], C, t + side, st.dead);
+    const [x] = toScreen(side, 0, 0);
+    text(`${st.done}`, x, ground + 36, { size: 34, weight: 900, color: C[id], font: "--font-display" });
+    text(`${state[id].name} · ${fmtKg(load(id, sg.lift.id))} of ${state[pid].name}`, x, ground + 54, { size: 12, weight: 500, color: C.muted });
+    const tot = totalsBefore[side] + st.done;
+    text(`${state[id].name.toUpperCase()} ${tot}`, side ? W - 14 : 14, 26, { size: 20, weight: 800, color: C[id], font: "--font-display", align: side ? "right" : "left" });
+    const headTop = [pts.head[0], pts.head[1] + 14];
+    const speak = pose.ride === "hang" && !st.c ? [pts.head[0], pts.hand[1] + 10] : headTop;
+    if (st.taunt) bubble(side, speak, TAUNTS[(sg.seed + side) % TAUNTS.length], C, C[id]);
+    else if (st.plea) bubble(side, speak, PLEAS[(sg.seed + side * 2) % PLEAS.length], C, C[id]);
+  });
+  const introA = clamp(1 - (t - sg.intro + 0.2) / 0.4, 0, 1);
+  text(sg.lift.name.toUpperCase(), W / 2, 30, { size: clamp(W / 28, 16, 28), weight: 900, color: C.ink, font: "--font-display" });
+  text(`×${sg.lift.mult} bodyweight`, W / 2, 48, { size: 12, weight: 600, color: C.muted, font: "--font-mono" });
+  if (introA > 0) {
+    ctx.globalAlpha = introA;
+    ctx.fillStyle = C.stage; ctx.fillRect(0, H * 0.32, W, H * 0.3);
+    text(sg.lift.name.toUpperCase(), W / 2, H * 0.5, { size: clamp(W / 11, 34, 76), weight: 900, color: C.plate, font: "--font-display", base: "middle" });
+    ctx.globalAlpha = 1;
+  }
+}
+function drawFinal(t, only) {
+  const C = colors(); clearStage(C);
+  const { ground } = frame();
+  const lifts = only && only !== "all" ? LIFTS.filter(l => l.id === only) : LIFTS;
+  const tot = IDS.map(id => lifts.reduce((s, l) => s + reps(id, l.id), 0));
+  const winSide = tot[0] === tot[1] ? -1 : tot[0] > tot[1] ? 0 : 1;
+  IDS.forEach((id, side) => {
+    const [x] = toScreen(side, 0, 0);
+    if (side === winSide) {
+      const pts = lerpPose(POSES.ohp.a, POSES.ohp.b, 0.85 + 0.15 * Math.sin(t * 5));
+      drawLifter(side, pts, C[id], C, {});
+      drawPassenger(side, POSES.ohp.anchor(pts), 0.5, "horiz", C[other(id)], C, t, false);
+      bubble(side, [pts.head[0] - 30, pts.hand[1] + 26], "Stack 2 Stack champion", C, C[id]);
+    } else {
+      const pts = squash(STAND, 1);
+      drawLifter(side, pts, C[id], C, { dead: true });
+      if (winSide === -1) drawPassenger(side, [pts.hip[0] + 6, 18], 1, "horiz", C[other(id)], C, t, true);
+    }
+    text(`${tot[side]}`, x, ground + 36, { size: 34, weight: 900, color: C[id], font: "--font-display" });
+    text(`${state[id].name} · total reps`, x, ground + 54, { size: 12, weight: 500, color: C.muted });
+  });
+  const title = winSide === -1 ? "Dead heat" : `${state[IDS[winSide]].name} wins ${Math.max(...tot)}–${Math.min(...tot)}`;
+  text(title.toUpperCase(), W / 2, 34, { size: clamp(W / 20, 22, 40), weight: 900, color: winSide === -1 ? C.ink : C[IDS[winSide]], font: "--font-display" });
+  if (winSide !== -1) confetti(t, C);
+}
+function confetti(t, C) {
+  const cols = [C.josh, C.james, C.plate];
+  for (let i = 0; i < 60; i++) {
+    const sx = ((i * 97) % 100) / 100 * W, sp = 40 + (i * 37) % 60;
+    const y = ((t * sp + i * 53) % (H + 20)) - 20, x = sx + Math.sin(t * 2 + i) * 12;
+    ctx.fillStyle = cols[i % 3]; ctx.save(); ctx.translate(x, y); ctx.rotate(t * 3 + i); ctx.fillRect(-3, -1.5, 6, 3); ctx.restore();
+  }
+}
+function play(only) {
+  cancelAnimationFrame(show.raf);
+  show.segs = buildSegs(only); show.only = only; show.running = true; show.start = performance.now();
+  const tick = now => {
+    let t = (now - show.start) / 1000, before = [0, 0], i = 0;
+    while (i < show.segs.length && t >= show.segs[i].dur) { before[0] += show.segs[i].n[0]; before[1] += show.segs[i].n[1]; t -= show.segs[i].dur; i++; }
+    if (i < show.segs.length) drawLiftSeg(show.segs[i], t, before);
+    else drawFinal(t, only);
+    show.raf = requestAnimationFrame(tick);
+  };
+  show.raf = requestAnimationFrame(tick);
+  document.getElementById("play").textContent = "Replay";
+}
+function skip() {
+  cancelAnimationFrame(show.raf);
+  show.running = true;
+  const only = document.getElementById("pick").value;
+  const t0 = performance.now();
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const tick = now => { drawFinal(reduce ? 0 : (now - t0) / 1000, only); if (!reduce) show.raf = requestAnimationFrame(tick); };
+  show.raf = requestAnimationFrame(tick);
+}
+const pick = document.getElementById("pick");
+for (const l of LIFTS) { const o = document.createElement("option"); o.value = l.id; o.textContent = `Just ${l.name.toLowerCase()}`; pick.appendChild(o); }
+document.getElementById("play").addEventListener("click", () => play(pick.value));
+document.getElementById("skip").addEventListener("click", skip);
+
+buildCards();
+renderAll();
+resize();
+if (document.fonts) document.fonts.ready.then(() => { if (!show.running) drawIdle(); });
+</script>
